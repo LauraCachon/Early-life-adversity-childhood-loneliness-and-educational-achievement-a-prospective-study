@@ -3,7 +3,7 @@
 ## 1. FFCW Data preparation
 ## 2. Multiple Imputations by Chained Equations
 ## 3. Binomial logistic regression models (RQ1)
-## 4. Propensity score weights and g-computation (RQ2)
+## 4. Propensity score weights and weighted g-computation (RQ2)
 
 
 ### 1.FFCW Data preparation ##
