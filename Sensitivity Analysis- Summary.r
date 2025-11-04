@@ -1,19 +1,19 @@
-## SENSITIVITY ANALYSIS
+## SENSITIVITY ANALYSIS ##
 
 #1. Sex-stratified analysis
-#2. Including child's temperament as confounder
-#3. Alternative cut off points for (Low) High School grades
+#2. Including child's temperament as a confounder
+#3. Alternative cut-off points for (Low) High School grades
 #4. Complete case analysis 
 
-#Sex stratified analysis
-  #Almost identical to main analysis, but conducted across two datasets (boys/girls), and therefore not including the variable sex_child1 as confounder
+#1. Sex stratified analysis
+  #Almost identical to main analysis, but conducted across two datasets (boys/girls), and therefore not including the variable sex_child1 as a confounder
 
-#Starting form the imp_10it dataset after imputation and data wrangling, create two separate datasets:
+#Starting from the imp_10it dataset after imputation and data wrangling, create two separate datasets:
 male <- filter(imp_10it, sex_child1 == 1)
 female <- filter(imp_10it, sex_child1 == 2)
 
 
-#Binomial models --> Eg: material hardship as predictor (sex group: boys)
+#Binomial models --> Eg: material hardship as predictor (group: boys)
 
 # Create a list of 20 imputed datasets + add variables: male/female
 imp_list_m <- lapply(1:20, function(i) {
@@ -74,14 +74,13 @@ compare_binomial_models_m <- function(imp_list_m, predictor) {
 }
 
 
-#1.Predictor: Material Hardship
+#Predictor: Material Hardship
 M_results_mh <- compare_binomial_models_m(imp_list_m, "mh.scale")
 
-#M_resultss for predictor only
+# M_results for predictor only
 print(M_results_mh$comparison)
 
 #RQ2
-
 #exposure model (PSs) - calculate the weights 
 w.imp_male <- weightthem(lon_3l ~ race_merged + lowbbweight + cm1age + race1_mother + mborn + relst1 + mother_edu3 + cognit3_mother
                          + cm3md_case_con + cm3alc_case + cm3drug_case + cm3gad_case + m_health3 + health3 + disab3 + mh.scale + nce.scale + ppvt.scale + chmalt.scale + mh_ppvt + nce_ppvt + chmalt_ppvt
@@ -106,10 +105,8 @@ love.plot(w.imp_male,
           sample.names = c("Unweighted", "PS Weighted (GBM)"))
 
 
-## OUTCOME MODELS - BOYS ##
-## USING "HC0" sandwich variance matrix ##
-
-#1. educational attainment 
+#Outcome model (boys)
+#eg: ducational attainment 
 fits_m <- lapply(seq_along(w.imp_male$models), function(i) {
   data <- complete(w.imp_male, i)
   W <- w.imp_male$models[[i]]
@@ -120,7 +117,6 @@ fits_m <- lapply(seq_along(w.imp_male$models), function(i) {
                    data = data, #loop, from before
                    link = "logit", weightit = W, vcov = "HC0") 
 })
-
 
 #Difference - ordinal_weightit()
 m.imp <- lapply(fits_m, function(fit) {
@@ -134,7 +130,6 @@ m.imp <- lapply(fits_m, function(fit) {
   
 })
 
-
 m.imp[[1]] #to check which are the contrast --> 2-1 / 3-1 / 3-2
 m.imp #Useful to see! group=outcome level
 
@@ -144,8 +139,7 @@ summary(pooled.m1, conf.int = TRUE, exponentiate = T) #educational attainment
 
 
 
-# SA Child's Temperament measure
-
+#2. SA Child's Temperament as a confounder
 #Add Child's Temperament variable to the dataset, before imputation (all following steps as in the main analysis, adding this variable as confounder)
 
 #select and explore items (6 items, scores 1-5) --> contained in "mydata" object
@@ -174,58 +168,7 @@ mydata <- mydata %>%
 summary(mydata$emot_shy1)
 
 
-
-#RQ2 minimally adjusted
-w.imp_bas <- weightthem(lon_3l ~ sex_child1 + race_merged + cm1age + relst1, 
-                        data = imp_mids, approach = 'within', method = "gbm", 
-                        estimand = "ATE")
-
-
-new.names2 <- c(sex_child1 = "Sex (Boy/Girl)",
-                race_merged = "Race/ethnicity",
-                cm1age = "Mother's age",
-                race1_mother = "Mother's race/ethnicity",
-                relst1 = "Parents' relationship")
-
-love.plot(w.imp_bas, binary = "std")
-love.plot(w.imp_bas, 
-          drop.distance = TRUE, 
-          #var.order = "unadjusted",
-          abs = TRUE,
-          binary = "std",
-          line = TRUE, 
-          thresholds = c(m = .1),
-          var.names = new.names2,
-          colors = c("red", "blue"),
-          shapes = c("triangle filled", "circle filled"),
-          sample.names = c("Unweighted", "PS Weighted (GBM)"))
-
-
-
-#EG: Outcome model: educational attainment 
-unadj_edu <- lapply(seq_along(w.imp_bas$models), function(i) {
-  data <- complete(w.imp_bas, i)
-  W <- w.imp_bas$models[[i]]
-  
-  
-  ordinal_weightit(edu_att22 ~ lon_3l + sex_child1 + race_merged + cm1age + relst1,
-                   data = data, #loop, from before
-                   link = "logit", weightit = W, vcov = "HC0") 
-}) 
-
-#Difference - ordinal_weightit()
-comp.unadj_edu<- lapply(unadj_edu, function(fit) {
-  avg_comparisons(fit,
-                  variables = list(lon_3l = "pairwise"),
-                  comparison = "lnratioavg") 
-  
-})
-
-pooled.unadj_edu <- mice::pool(comp.unadj_edu, dfcom = Inf)
-summary(pooled.unadj_edu, conf.int = TRUE, exponentiate = T) 
-
-
-#SA- Alternative cut-off points for high school grades variable
+#3. SA- Alternative cut-off points for high school grades variable
 
 #Dichotomize HS grades --> #1= mostly Bs or lower, 0= about half As/Bs(7), mostly As (8) 
 imp_10it$hs_binAB <- imp_10it$hsgrades22 #new variable 
@@ -274,16 +217,12 @@ pooled.try3AB <- mice::pool(comp.imp3AB, dfcom = Inf)
 summary(pooled.try3AB, conf.int = TRUE, exponentiate = T)
 
 
-# SA- Complete case analysis
+#4. SA- Complete case analysis
 
-## complete case analysis ##
 ffcw4 <- ffcw3 %>% dplyr::select(-c(PPVT9raw, edu_aux22, neighbour3pcg, sum_no_violent))
 summary(ffcw4)
-
 complete <- ffcw4[complete.cases(ffcw4), ]
-
 summary(complete) #1266 observations 
-
 
 # DATA wrangling #
 
@@ -518,7 +457,7 @@ compare_binomial_int <- function(predictors) {
   ))
 }
 
-#Examples:
+#A couple of examples:
 
 #1.Predictor: Material Hardship
 result_mh.com <- compare_binomial_models("mh.scale")
@@ -528,7 +467,6 @@ print(result_mh.com)
 #4. All SEF as predictors 
 result_sef <- compare_binomial_int(predictors = c("mh.scale", "nce.scale", "chmalt.scale"))
 print(result_sef$comparison)
-
 
 
 # RQ2 
@@ -564,8 +502,6 @@ new.names <- c(sex_child1 = "Sex (Boy/Girl)",
                mh_ppvt = "Int: Material Hardship x PPVT",
                nce_ppvt = "Int: Neighborhood CE x PPVT",
                chmalt_ppvt = "Int: Child maltreatment x PPVT")
-
-
 
 # Pairwise comparisons for treatment groups 0 vs 1
 love.plot(W, drop.distance = TRUE,
@@ -637,6 +573,5 @@ att_ATE_summary <- att_ATE %>%
 
 att_ATE_summary
 
-
-
+## THE END ##
 
