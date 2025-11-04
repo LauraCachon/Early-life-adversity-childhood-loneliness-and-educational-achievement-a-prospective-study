@@ -4,6 +4,7 @@
 ## 2. Multiple Imputations by Chained Equations
 ## 3. Binomial logistic regression models (RQ1)
 ## 4. Propensity score weights and weighted g-computation (RQ2)
+  ## 4.1. Minimally adjusted models (RQ2)
 
 
 ### 1.FFCW Data preparation ##
@@ -824,6 +825,60 @@ comp.imp3 #Useful to see! group=outcome level
 
 pooled.try3 <- mice::pool(comp.imp3, dfcom = Inf)
 summary(pooled.try3, conf.int = TRUE, exponentiate = T)
+
+
+##4.1. Minimally adjusted models (RQ2)
+
+# Calculate the weights 
+w.imp_bas <- weightthem(lon_3l ~ sex_child1 + race_merged + cm1age + relst1, 
+                        data = imp_mids, approach = 'within', method = "gbm", 
+                        estimand = "ATE")
+
+
+new.names2 <- c(sex_child1 = "Sex (Boy/Girl)",
+                race_merged = "Race/ethnicity",
+                cm1age = "Mother's age",
+                race1_mother = "Mother's race/ethnicity",
+                relst1 = "Parents' relationship")
+
+love.plot(w.imp_bas, binary = "std")
+love.plot(w.imp_bas, 
+          drop.distance = TRUE, 
+          #var.order = "unadjusted",
+          abs = TRUE,
+          binary = "std",
+          line = TRUE, 
+          thresholds = c(m = .1),
+          var.names = new.names2,
+          colors = c("red", "blue"),
+          shapes = c("triangle filled", "circle filled"),
+          sample.names = c("Unweighted", "PS Weighted (GBM)"))
+
+
+
+#EG: Outcome model: educational attainment (Analogous for the other 2 outcome models)
+
+unadj_edu <- lapply(seq_along(w.imp_bas$models), function(i) {
+  data <- complete(w.imp_bas, i)
+  W <- w.imp_bas$models[[i]]
+  
+  
+  ordinal_weightit(edu_att22 ~ lon_3l + sex_child1 + race_merged + cm1age + relst1,
+                   data = data, #loop, from before
+                   link = "logit", weightit = W, vcov = "HC0") 
+}) 
+
+#Difference - ordinal_weightit()
+comp.unadj_edu<- lapply(unadj_edu, function(fit) {
+  avg_comparisons(fit,
+                  variables = list(lon_3l = "pairwise"),
+                  comparison = "lnratioavg") 
+  
+})
+
+pooled.unadj_edu <- mice::pool(comp.unadj_edu, dfcom = Inf)
+summary(pooled.unadj_edu, conf.int = TRUE, exponentiate = T) 
+
 
 
 
