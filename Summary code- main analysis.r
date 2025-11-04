@@ -691,8 +691,7 @@ summary(w.imp_gbm)
 summary(get.w(w.imp_gbm))
 
 #Covariate balance table
-bal.tab(w.imp_gbm)
-bal.tab(w.imp_gbm, m.threshold = 0.1)
+bal.tab(w.imp_gbm, binary = "std")
 
 
 #Covariate balance plot
@@ -725,17 +724,17 @@ love.plot(w.imp_gbm,
           drop.distance = TRUE, 
           #var.order = "unadjusted",
           abs = TRUE,
-          stars = "std",
+          binary = "std",
           line = TRUE, 
           thresholds = c(m = .1),
-          var.names = new.names1,
+          var.names = new.names,
           colors = c("red", "blue"),
           shapes = c("triangle filled", "circle filled"),
           sample.names = c("Unweighted", "PS Weighted (GBM)"))
 
 
 
-## Outcome model: weighted g-computation 
+## Outcome models: weighted g-computation 
 
 #Outcome 1: educational attainment
 fits <- lapply(seq_along(w.imp_gbm$models), function(i) {
