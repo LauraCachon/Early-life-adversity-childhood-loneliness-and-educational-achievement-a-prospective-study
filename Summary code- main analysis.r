@@ -28,7 +28,7 @@ mydata<-allwaves
 mydata[mydata < 0] <- NA #Replace all negative values (not in wave, skipped, not asked, refused, etc) with NA
 
 
-##Inclsuion criteria: 
+##Inclusion criteria: 
 #Select participants with loneliness complete data 
 complete_lon <- mydata %>%
   filter(!is.na(p4l5) & !is.na(p5q3k)) #n=2466 
@@ -411,6 +411,12 @@ imp_10it <- imp_10it %>%
   ) %>%
   ungroup()
 
+#5. Dichotomous educational attainment outcome
+summary(imp_10it$edu_att22) #1=less than high school, 2=high school or equivalent, 3=some college or technical education, and 4=completed college or graduate school.
+imp_10it$edu_nonacad <- recode(imp_10it$edu_att22, "1" = "1", "2" = "1", "3" = "0", "4" = "0") #non-academic education vs HS max 
+
+summary(imp_10it$edu_nonacad)
+
 imp_mids <- as.mids(imp_10it) #I need a mids object
 
 ## STATISTICAL ANALYSIS ##
@@ -743,10 +749,10 @@ fits <- lapply(seq_along(w.imp_gbm$models), function(i) {
   W <- w.imp_gbm$models[[i]]
   
   
-  ordinal_weightit(edu_att22 ~ lon_3l + sex_child1 + race_merged + lowbbweight + cm1age + race1_mother + mborn + relst1 + mother_edu3 + cognit3_mother
+  glm_weightit(edu_nonacad ~ lon_3l + sex_child1 + race_merged + lowbbweight + cm1age + race1_mother + mborn + relst1 + mother_edu3 + cognit3_mother
                    + cm3md_case_con + cm3alc_case + cm3drug_case + cm3gad_case + m_health3 + health3 + disab3 + mh.scale + nce.scale + chmalt.scale + mh_ppvt + nce_ppvt + chmalt_ppvt,
                    data = data, #loop, from before
-                   link = "logit", weightit = W, vcov = "HC0") 
+                   weightit = W, family = binomial, vcov = "HC0") 
 }) 
 
 #Difference - ordinal_weightit()
@@ -758,7 +764,6 @@ comp.imp <- lapply(fits, function(fit) {
   
   
 })
-
 
 comp.imp[[1]] #to check which are the contrast --> 2-1 / 3-1 / 3-2
 comp.imp #Useful to see! group=outcome level
@@ -863,9 +868,8 @@ unadj_edu <- lapply(seq_along(w.imp_bas$models), function(i) {
   W <- w.imp_bas$models[[i]]
   
   
-  ordinal_weightit(edu_att22 ~ lon_3l + sex_child1 + race_merged + cm1age + relst1,
-                   data = data, #loop, from before
-                   link = "logit", weightit = W, vcov = "HC0") 
+  glm_weightit(edu_nonacad ~ lon_3l + sex_child1 + race_merged + cm1age + relst1,
+                   data = data, weightit = W, family = binomial, vcov = "HC0")
 }) 
 
 #Difference - ordinal_weightit()
