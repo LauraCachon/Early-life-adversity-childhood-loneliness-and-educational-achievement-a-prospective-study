@@ -1,35 +1,47 @@
-## R code to reproduce main analysis of the paper "Early-life adversity, childhood loneliness, and educational achievement: a prospective study" by Cachon-Alonso et al 2025
+## R code to reproduce the main analysis of the paper "Early-life adversity, childhood loneliness, and educational achievement: a prospective study" by Cachon-Alonso et al 2025
 
+## 0. Data download and loading
 ## 1. FFCW Data preparation
 ## 2. Multiple Imputations by Chained Equations
 ## 3. Binomial logistic regression models (RQ1)
-## 4. Propensity score weights and weighted g-computation (RQ2)
+## 4. Propensity score weights and g-computation (RQ2)
   ## 4.1. Minimally adjusted models (RQ2)
-
-
-### 1.FFCW Data preparation ##
 
 library(tidyverse)
 library(haven)
 library(dplyr)
 options(scipen=999)
 
-#load FFCW data
-load("/Users/lacachon/Desktop/FFCW-Paper3/data/data.RData") #waves 1-6 (year 1 to 15)
+## 0. Data download and loading ##
 
-wave72024v12<-read_dta("/Users/lacachon/Desktop/FFCW-Paper3/data/FF_wave7_2024v1 2.dta") #wave 7 variables
-wave7_edu <- wave72024v12 %>% select (idnum, hsgrades22=k7b13, edu_att22=ck7edu, ck7ethrace, cp7kedu,
-                                      susp=k7b35b, susp4=k7b39_4, susp5=k7b39_5, susp6=k7b39_6, susp7=k7b39_7, susp8=k7b39_8, susp9=k7b39_9, susp10=k7b39_10, susp11=k7b39_11, susp12=k7b39_12, k7b39_1, k7b39_2, k7b39_3, k7b39_0)
-summary(wave7_edu$susp)
-allwaves<-full_join(data, wave7_edu, by="idnum")
+#Data can be downloaded from https://doi.org/10.3886/ICPSR31622.v5 after creating a ICPSR account
+#Start the download (by opening the “Download” tab and selecting “R”; this will download a folder called ICPSR_31622 containing all documents (data and documentation files)
+#Inside the ICPSR_31622 folder, you'll find folder DS0001, which contains file 31622-0001-Data.rda (this is the R file you need)
 
+#Once you have loaded the R file 31622-0001-Data.rda, select and rename variables:
+
+datav5 <- da31622.0001 %>% select(idnum=IDNUM, p4l5=P4L5, p5q3k=P5Q3K, hsgrades22=K7B13, edu_att22=CK7EDU, ck7ethrace=CK7ETHRACE, cp7kedu=CP7KEDU, ck6ethrace=CK6ETHRACE,
+                                  susp=K7B35B, susp4=K7B39_4, susp5=K7B39_5, susp6=K7B39_6, susp7=K7B39_7, susp8=K7B39_8, susp9=K7B39_9, susp10=K7B39_10, susp11=K7B39_11, susp12=K7B39_12, k7b39_3=K7B39_3, k7b39_2=K7B39_2, k7b39_1=K7B39_1, k7b39_0=K7B39_0,
+                                  m3b2=M3B2, m3b27=M3B27, m4i0m1=M4I0M1, m4i0m2=M4I0M2, m4i0m3=M4I0M3, m4i0m4=M4I0M4, m4i0m5=M4I0M5, m4i0n1=M4I0N1, m4i0n2=M4I0N2, m4i0n3=M4I0N3, m4i0n4=M4I0N4, f4i0m1=F4I0M1, f4i0m2=F4I0M2, 
+                                  f4i0m3=F4I0M3, f4i0m4=F4I0M4, f4i0m5=F4I0M5, f4i0n1=F4I0N1, f4i0n2=F4I0N2, f4i0n3=F4I0N3, f4i0n4=F4I0N4, m4i23d=M4I23D, m4i23e=M4I23E, m4i23f=M4I23F, m4i23k=M4I23K, m4i23a=M4I23A, m4i23i=M4I23I, 
+                                  m4i23j=M4I23J, m4i23h=M4I23H, m4i23b=M4I23B, m4i23c=M4I23C, m4i23g=M4I23G, p3k2d=P3K2D, p3k2e=P3K2E, p4g3=P4G3, p4g4=P4G4, p4g6=P4G6, p4g7=P4G7, p4g8=P4G8, p4g9=P4G9, p4g10=P4G10, p4g11=P4G11, 
+                                  p4g13=P4G13, p4g14=P4G14, p4g15=P4G15, p4g16=P4G16, p4g17=P4G17, p4g18=P4G18, p4g19=P4G19, p4g1=P4G1, p4g5=P4G5, p4g12=P4G12, p4g2=P4G2, cm1marf=CM1MARF, cm1cohf=CM1COHF, m3j1=M3J1, cm3cogsc=CM3COGSC, 
+                                  cm1bsex=CM1BSEX, cm1lbw=CM1LBW, cm1age=CM1AGE, cm1ethrace=CM1ETHRACE, m1h2=M1H2, cm3edu=CM3EDU, cm3md_case_con=CM3MD_CASE_CON, cm3alc_case=CM3ALC_CASE, cm3drug_case=CM3DRUG_CASE, cm3gad_case=CM3GAD_CASE, 
+                                  p3a2=P3A2, p3k1a=P3K1A, p3k1b=P3K1B, p3k1c=P3K1C, p3k1d=P3K1D, p3k1e=P3K1E, p3k2a=P3K2A, p3k2b=P3K2B, p3k2c=P3K2C, p3k2d=P3K2D, p3k2e=P3K2E, ch4ppvtraw=CH4PPVTRAW, ch5ppvtraw=CH5PPVTRAW)
+
+mydata <- datav5
+
+mydata <- mydata %>%
+mutate(across(everything(), ~ as.numeric(sub("^\\(([-0-9]+)\\).*", "\\1", as.character(.)))))
+
+### 1. FFCW Data preparation ##
 #Replace with NA
 mydata<-allwaves
 mydata[mydata < 0] <- NA #Replace all negative values (not in wave, skipped, not asked, refused, etc) with NA
 
 
 ##Inclusion criteria: 
-#Select participants with loneliness complete data 
+#Select participants with complete loneliness data 
 complete_lon <- mydata %>%
   filter(!is.na(p4l5) & !is.na(p5q3k)) #n=2466 
 
@@ -344,14 +356,14 @@ plot(imputed_10) #convergence plot (looks good)
 imp_10it <- complete(imputed_10, action = "long", include = TRUE)
 
 
-# DATA CODING AFTER IMPUTATON #
+# DATA CODING AFTER IMPUTATION #
 
 #1. Dichotomize HS grades
 imp_10it$hs_bin <- imp_10it$hsgrades22 #new variable 
 imp_10it$hs_bin <- recode(imp_10it$hs_bin, "1" = "1", "2" = "1", "3" = "1", "4" = "1", "5" = "1", "6" = "0", "7" = "0", "8" = "0") #6=mostly B's'
 summary(imp_10it$hs_bin) #1=half B, half C or lower, 0=at least mostly Bs
 
-#2. Loneliness cateogry
+#2. Loneliness category
 #Loneliness scores
 #recode so that 0=not lonely and 1=sometimes/often lonely
 imp_10it <- imp_10it %>%
@@ -418,6 +430,23 @@ imp_10it$edu_nonacad <- recode(imp_10it$edu_att22, "1" = "1", "2" = "1", "3" = "
 summary(imp_10it$edu_nonacad)
 
 imp_mids <- as.mids(imp_10it) #I need a mids object
+
+## TABLE 1:DESCRIPTION ##
+
+library(table1)
+table1 <- imp_10it %>% filter(.imp ==1) #extract imputed dataset1
+
+table1$sex_child1<-factor(table1$sex_child1, levels=c(1,2), labels=c("Boy","Girl"))
+
+table1$race1_mother<-factor(table1$race1_mother, levels=c(1,2,3,4), labels=c("white non-hispanic", "black non-hispanic", "hispanic", "other"))
+table1$race_merged<-factor(table1$race_merged, levels=c(1,2,3,4,5), labels=c("white non-hispanic", "black non-hispanic", "hispanic", "other", "multi-racial, non-Hispanic"))
+
+table1$mother_edu3<-factor(table1$mother_edu3, levels=c(1,2,3,4), labels=c("less than HS", "HS or equivalent", "some college or tech", "college or graduate"))
+
+#3-level loneliness
+table1(~ sex_child1 + lowbbweight + cm1age + race1_mother + race_merged + mother_edu3 + mborn + relst1 + cognit3_mother + cm3md_case_con + cm3gad_case + cm3alc_case + cm3drug_case +
+         m_health3 + health3 + disab3 + mathard4m + nce5 + sum_conflict4 + PPVT5raw  + hs_bin + susp_bin + edu_nonacad | lon_3l, data=table1)
+
 
 ## STATISTICAL ANALYSIS ##
 
@@ -584,9 +613,6 @@ compare_binomial_int <- function(imp_list, predictors) {
 
 #1.Predictor: Material Hardship
 result_mh <- compare_binomial_models(imp_list, "mh.scale")
-
-#Results for predictor only
-print(result_mh$comparison)
 
 #For full results
 print(result_mh$mid_high)
