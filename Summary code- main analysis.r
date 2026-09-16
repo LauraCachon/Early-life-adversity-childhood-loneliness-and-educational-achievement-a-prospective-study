@@ -36,7 +36,6 @@ mutate(across(everything(), ~ as.numeric(sub("^\\(([-0-9]+)\\).*", "\\1", as.cha
 
 ### 1. FFCW Data preparation ##
 #Replace with NA
-mydata<-allwaves
 mydata[mydata < 0] <- NA #Replace all negative values (not in wave, skipped, not asked, refused, etc) with NA
 
 
